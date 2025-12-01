@@ -4,6 +4,9 @@ class Atom:
     def __init__(self, word):
         self.word = word
 
+    def __repr__(self):
+        return '#' + self.word
+
 class AtomManager:
     def __init__(self):
         self.atoms = {}
@@ -21,9 +24,9 @@ class Fact:
 
     def match(self, args):
         for a in args:
-            if a[0] in self.args and self.args[a[0]] == a[1]:
-                return True
-        return False
+            if a[0] not in self.args or self.args[a[0]] != a[1]:
+                return False
+        return True
 
     def get(self, targets):
         result = []
@@ -32,9 +35,9 @@ class Fact:
                 result.append( (t, self.args[t]) )
             else:
                 result.append( (t, None) )
-        return None
+        return result
 
-class Concept
+class Concept:
     def __init__(self, action):
         self.action = action
         self.facts = []
@@ -57,21 +60,21 @@ class Body():
 
     def addfact(self, action, args):
         action = self.atoms.get(action)
-        args = map( lambda x: tuple(map(lambda y:self.atoms.get(y), x.split(':'))), args)
+        args = list(map( lambda x: tuple(map(lambda y:self.atoms.get(y), x.split(':'))), args))
         if action not in self.concepts:
             self.concepts[action] = Concept(action)
         self.concepts[action].append(args)
 
     def resolve_strings(self, action, args, results):
         action = self.atoms.get(action)
-        args = map( lambda x: tuple(map(lambda y:self.atoms.get(y), x.split(':'))), args)
-        results = map( lambda x: self.atoms.get(x), results)
+        args = list(map( lambda x: tuple(map(lambda y:self.atoms.get(y), x.split(':'))), args))
+        results = list(map( lambda x: self.atoms.get(x), results))
         return self.resolve(action, args, results)
 
-    def resolve(self, action, args, results)
+    def resolve(self, action, args, results):
         if action not in self.concepts:
             return None
-        return self.concepts[aact].resolve(args, results)
+        return self.concepts[action].resolve(args, results)
 
 if __name__ == '__main__':
     body = Body()
