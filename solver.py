@@ -48,10 +48,12 @@ class Concept:
                 return
         self.facts.append( Fact(args) )
 
-    def resolve(self, args, results):
+    def resolve(self, args, targets):
+        result = []
         for f in self.facts:
             if f.match(args):
-                return f.get(results)
+                result.append(f.get(targets))
+        return result
 
 class Body():
     def __init__(self):
@@ -78,8 +80,8 @@ class Body():
 
 if __name__ == '__main__':
     body = Body()
-    body.addfact('plus', ['dobj:one', 'iobj:one', 'result:two'])
-    body.addfact('plus', ['dobj:one', 'iobj:two', 'result:three'])
-    body.addfact('plus', ['dobj:one', 'iobj:three', 'result:four'])
-    body.addfact('plus', ['dobj:one', 'iobj:four', 'result:five'])
-    print(body.resolve_strings('plus', ['dobj:one', 'iobj:two'], ['result']))
+    body.addfact('plus', ['dobj:1', 'iobj:1', 'result:2'])
+    body.addfact('plus', ['dobj:1', 'iobj:2', 'result:3'])
+    body.addfact('plus', ['dobj:1', 'iobj:3', 'result:4'])
+    body.addfact('plus', ['dobj:1', 'iobj:4', 'result:5'])
+    print(body.resolve_strings('plus', ['dobj:1', 'iobj:2'], ['result']))
