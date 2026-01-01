@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 
+import logging
+
 class Atom:
     def __init__(self, word):
         self.word = word
@@ -17,6 +19,7 @@ class AtomManager:
     def get(self, word):
         if word not in self.atoms:
             self.atoms[word] = Atom(word)
+            logging.info(f'Atom {word} registered')
         return self.atoms[word]
 
 class Fact:
@@ -52,6 +55,9 @@ class Fact:
             else:
                 query.args.append( (aname, avalue) )
 
+    def __repr__(self):
+        return f'<Fact {self.args}>'
+
 class Query:
     def __init__(self, action):
         self.action = action
@@ -83,20 +89,21 @@ class RuleResolveContext:
         self.expressions = []
 
     def resolve(self):
+        logging.debug(f'Resolving context #{id(self):X}: {self.rule} with {self.lvars}')
         expressions = []
         expressions.append( ExpressionResolveContext(self) )
         for e in self.rule.expressions:
             nextctx = []
             for ec in expressions:
                 query = e.makequery(ec)
-                print('q', query.args, query.targets)
+                logging.debug(f'Resolving context #{id(self):X}: expression query {query.args} {query.targets}')
                 for r in query.resolve():
                     nextctx.append( self.makenext(ec, r) )
             expressions = nextctx
         result = []
         for e in expressions:
             result.append(e.lvars)
-            print('qr', e.lvars)
+            logging.debug(f'Resolving context #{id(self):X}: result {e.lvars}')
         return result
 
     def makenext(self, ectx, varval):
@@ -123,6 +130,7 @@ class ExpressionResolveContext:
 class Rule:
     def __init__(self, body, definition, expression):
         ''' definition is a list of args; expression is a list of tuples (action, args). Args are tuples themselves '''
+        logging.debug(f'Rule #{id(self):X} creation for {definition} {expression}')
         self.args = {}
         self.inplace = []
         self.definition = Fact(definition)
@@ -131,21 +139,18 @@ class Rule:
             if d[1].isvariable() and d[1] not in self.args:
                 self.args[d[0]] = d[1]
                 largs.append(d[1])
-        print('d', definition)
         self.expressions = []
         for e in expression:
-            print('ei', e[1])
             self.expressions.append( Clause( body.getconcept(e[0]), e[1]) )
             for ea in e[1]:
                 if ea[1].isvariable() and ea[1] not in largs and ea[1] not in self.inplace:
                     self.inplace.append(ea[1])
-        print('a', self.args)
-        print('p', self.inplace)
+        logging.debug(f'Rule #{id(self):X} created with {self.args} and {self.inplace}')
 
     def resolve(self, args, targets):
-        print('rs', targets)
+        logging.debug(f'Rule #{id(self):X} resolving with {args} and {targets}')
         context = RuleResolveContext(self, args)
-        print('cv', context.lvars)
+        logging.debug(f'Rule #{id(self):X} resolving, context #{id(context):X} created with {context.lvars}')
         result = []
         for r in context.resolve():
             ts = []
@@ -153,6 +158,9 @@ class Rule:
                 ts.append( (tr, r[self.args[tr]]) )
             result.append(ts)
         return result
+
+    def __repr__(self):
+        return f'<Rule {self.args} {self.definition} {self.inplace}>'
 
 class Concept:
     def __init__(self, action):
@@ -177,7 +185,7 @@ class Concept:
             for k,v in r:
                 vals[query.tarvars[k]] = v
             result.append(vals)
-        print('rr', query.targets, resolved, result)
+        logging.info(f'Concept resolved query with {query.targets} and {resolved} with {result}')
         return result
 
     def resolve(self, args, targets):
@@ -188,6 +196,7 @@ class Concept:
         if len(result) == 0:
             for r in self.rules:
                 result.extend(r.resolve(args, targets))
+        logging.info(f'Concept resolved with with {result}')
         return result
 
 class Body:
@@ -212,6 +221,7 @@ class Body:
     def resolve(self, action, args, results):
         if action not in self.concepts:
             return None
+        logging.info(f'Resolving {action} {args} {results}')
         return self.concepts[action].resolve(args, results)
 
     def atomize(self, action, args):
@@ -225,6 +235,8 @@ class Body:
         return self.concepts[action]
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG, filename='solver.log', filemode='w',
+                        format='%(asctime)s %(name)s %(levelname)s %(message)s')
     body = Body()
     body.addfact('plus', ['dobj:1', 'iobj:1', 'result:2'])
     body.addfact('plus', ['dobj:1', 'iobj:2', 'result:3'])
@@ -232,6 +244,6 @@ if __name__ == '__main__':
     body.addfact('plus', ['dobj:1', 'iobj:4', 'result:5'])
     body.addrule( ('plus', ['dobj:$x', 'iobj:$y', 'result:$z']),
                   [ ('plus', ['dobj:1','iobj:$a','result:$x']), ('plus', ['dobj:$a','iobj:$y','result:$b']), ('plus',['dobj:1','iobj:$b','result:$z']) ] )
-#    print(body.resolve_strings('plus', ['dobj:1', 'iobj:2'], ['result']))
-#    print(body.resolve_strings('plus', ['iobj:3', 'result:4'], ['dobj']))
+    print(body.resolve_strings('plus', ['dobj:1', 'iobj:2'], ['result']))
+    print(body.resolve_strings('plus', ['iobj:3', 'result:4'], ['dobj']))
     print(body.resolve_strings('plus', ['dobj:2', 'iobj:3'], ['result']))
