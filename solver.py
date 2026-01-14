@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import logging
+import kessot_pb2
 
 class Atom:
     def __init__(self, word):
@@ -21,6 +22,14 @@ class AtomManager:
             self.atoms[word] = Atom(word)
             logging.info(f'Atom {word} registered')
         return self.atoms[word]
+
+    def save(self, context, patoms):
+        for i, a in enumerate(self.atoms.values()):
+            pa = kessot_pb2.Atom()
+            pa.id = i
+            pa.word = a.word
+            patoms.append(pa)
+            context.atoms[a] = i
 
 class Fact:
     def __init__(self, args):
@@ -58,6 +67,15 @@ class Fact:
     def __repr__(self):
         return f'<Fact {self.args}>'
 
+    def save(self, context):
+        pfact = kessot_pb2.Fact()
+        for ak, av in self.args.items():
+            parg = kessot_pb2.Argument()
+            parg.role = context.atoms[ak]
+            parg.value = context.atoms[av]
+            pfact.args.append(parg)
+        return pfact
+
 class Query:
     def __init__(self, action):
         self.action = action
@@ -77,6 +95,12 @@ class Clause:
         query = Query(self.action)
         self.args.makequery(context, query)
         return query
+
+    def save(self, context):
+        pclause = kessot_pb2.Clause()
+        pclause.action = context.atoms[self.action.action]
+        pclause.args.CopyFrom( self.args.save(context) )
+        return pclause
 
 class RuleResolveContext:
     def __init__(self, rule, args):
@@ -162,6 +186,13 @@ class Rule:
     def __repr__(self):
         return f'<Rule {self.args} {self.definition} {self.inplace}>'
 
+    def save(self, context):
+        prule = kessot_pb2.Rule()
+        prule.definition.CopyFrom( self.definition.save(context) )
+        for e in self.expressions:
+            prule.expressions.append( e.save(context) )
+        return prule
+
 class Concept:
     def __init__(self, action):
         self.action = action
@@ -173,6 +204,7 @@ class Concept:
             if f.match(args):
                 return
         self.facts.append( Fact(args) )
+        logging.debug(f'Concept {self.action} {args} added')
 
     def addrule(self, body, definition, expression):
         self.rules.append( Rule(body, definition, expression) )
@@ -199,6 +231,20 @@ class Concept:
         logging.info(f'Concept resolved with with {result}')
         return result
 
+    def save(self, context):
+        pconcept = kessot_pb2.Concept()
+        pconcept.action = context.atoms[self.action]
+        for f in self.facts:
+            pconcept.facts.append(f.save(context))
+        for r in self.rules:
+            pconcept.rules.append(r.save(context))
+        return pconcept
+
+class BodySaver:
+    def __init__(self):
+        self.atoms = {}
+        self.concepts = {}
+
 class Body:
     def __init__(self):
         self.atoms = AtomManager()
@@ -211,7 +257,7 @@ class Body:
     def addrule(self, definition, expression):
         definition = self.atomize(*definition)
         expression = list(map( lambda x: self.atomize(*x), expression))
-        self.getconcept( definition[0] ).addrule(body, definition[1], expression)
+        self.getconcept( definition[0] ).addrule(self, definition[1], expression)
 
     def resolve_strings(self, action, args, results):
         (action, args) = self.atomize(action, args)
@@ -233,6 +279,17 @@ class Body:
         if action not in self.concepts:
             self.concepts[action] = Concept(action)
         return self.concepts[action]
+
+    def save(self, filename):
+        context = BodySaver()
+        pbody = kessot_pb2.Body()
+        self.atoms.save(context, pbody.atoms)
+        for c in self.concepts.values():
+            context.concepts[c] = context.atoms[c.action]
+        for c in self.concepts.values():
+            pbody.concepts.append( c.save(context) )
+        with open(filename, 'wb') as f:
+            f.write(pbody.SerializeToString())
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG, filename='solver.log', filemode='w',

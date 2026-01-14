@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package kessot;
+
+message Atom
+{
+  uint32 id = 1;
+  string word = 2;
+}
+
+message Argument
+{
+ uint32 role = 1;   // Atom reference
+ uint32 value = 2;  // Atom reference
+}
+
+message Fact
+{
+ repeated Argument args = 1;
+}
+
+message Clause
+{
+ uint32 action = 1;         // Concept reference via Atom
+ Fact args = 2;
+}
+
+message Rule
+{
+ Fact definition = 1;
+ repeated Clause expressions = 2;
+}
+
+message Concept
+{
+ uint32 action = 1;         // Atom reference
+ repeated Fact facts = 2;
+ repeated Rule rules = 3;
+}
+
+message Body
+{
+ repeated Atom atoms = 1;
+ repeated Concept concepts = 2;
+}
