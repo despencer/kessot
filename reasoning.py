@@ -31,6 +31,10 @@ class AtomManager:
             patoms.append(pa)
             context.atoms[a] = i
 
+    def load(self, context, patoms):
+        for pa in patoms:
+            context.atoms[pa.id] = self.get(pa.word)
+
 class Fact:
     def __init__(self, args):
         self.args = {}
@@ -76,6 +80,13 @@ class Fact:
             pfact.args.append(parg)
         return pfact
 
+    @classmethod
+    def load(cls, context, pfact):
+        args = []
+        for parg in pfact.args:
+           args.append( (context.atoms[parg.role],context.atoms[parg.value]) )
+        return cls(args)
+
 class Query:
     def __init__(self, action):
         self.action = action
@@ -87,20 +98,34 @@ class Query:
         return self.action.resolvequery(self)
 
 class Clause:
-    def __init__(self, action, args):
-        self.action = action
-        self.args = Fact(args)
+    def __init__(self):
+        self.action = None
+        self.args = None
 
     def makequery(self, context):
         query = Query(self.action)
         self.args.makequery(context, query)
         return query
 
+    @classmethod
+    def create(cls, action, args):
+        clause = cls()
+        clause.action = action
+        clause.args = Fact(args)
+        return clause
+
     def save(self, context):
         pclause = kessot_pb2.Clause()
         pclause.action = context.atoms[self.action.action]
         pclause.args.CopyFrom( self.args.save(context) )
         return pclause
+
+    @classmethod
+    def load(cls, context, pclause):
+        clause = cls()
+        clause.action = context.body.getconcept(context.atoms[pclause.action])
+        clause.args = Fact.load(context, pclause.args)
+        return clause
 
 class RuleResolveContext:
     def __init__(self, rule, args):
@@ -152,24 +177,11 @@ class ExpressionResolveContext:
         return self.context.lvars[varname]
 
 class Rule:
-    def __init__(self, body, definition, expression):
-        ''' definition is a list of args; expression is a list of tuples (action, args). Args are tuples themselves '''
-        logging.debug(f'Rule #{id(self):X} creation for {definition} {expression}')
+    def __init__(self):
         self.args = {}
         self.inplace = []
-        self.definition = Fact(definition)
-        largs = []
-        for d in definition:
-            if d[1].isvariable() and d[1] not in self.args:
-                self.args[d[0]] = d[1]
-                largs.append(d[1])
+        self.definition = None
         self.expressions = []
-        for e in expression:
-            self.expressions.append( Clause( body.getconcept(e[0]), e[1]) )
-            for ea in e[1]:
-                if ea[1].isvariable() and ea[1] not in largs and ea[1] not in self.inplace:
-                    self.inplace.append(ea[1])
-        logging.debug(f'Rule #{id(self):X} created with {self.args} and {self.inplace}')
 
     def resolve(self, args, targets):
         logging.debug(f'Rule #{id(self):X} resolving with {args} and {targets}')
@@ -186,12 +198,44 @@ class Rule:
     def __repr__(self):
         return f'<Rule {self.args} {self.definition} {self.inplace}>'
 
+    def setvars(self):
+        largs = []
+        for role, value in self.definition.args.items():
+            if value.isvariable() and value not in self.args:
+                self.args[role] = value
+                largs.append(value)
+        for e in self.expressions:
+            for eavalue in e.args.args.values():
+                if eavalue.isvariable() and eavalue not in largs and eavalue not in self.inplace:
+                    self.inplace.append(eavalue)
+
+    @classmethod
+    def create(cls, body, definition, expression):
+        ''' definition is a list of args; expression is a list of tuples (action, args). Args are tuples themselves '''
+        rule = cls()
+        logging.debug(f'Rule #{id(rule):X} creation for {definition} {expression}')
+        rule.definition = Fact(definition)
+        for e in expression:
+            rule.expressions.append( Clause.create(body.getconcept(e[0]), e[1]) )
+        rule.setvars()
+        logging.debug(f'Rule #{id(rule):X} created with {rule.args} and {rule.inplace}')
+        return rule
+
     def save(self, context):
         prule = kessot_pb2.Rule()
         prule.definition.CopyFrom( self.definition.save(context) )
         for e in self.expressions:
             prule.expressions.append( e.save(context) )
         return prule
+
+    @classmethod
+    def load(cls, context, prule):
+        rule = cls()
+        rule.definition = Fact.load(context, prule.definition)
+        for pe in prule.expressions:
+            rule.expressions.append( Clause.load(context, pe) )
+        rule.setvars()
+        return rule
 
 class Concept:
     def __init__(self, action):
@@ -207,7 +251,7 @@ class Concept:
         logging.debug(f'Concept {self.action} {args} added')
 
     def addrule(self, body, definition, expression):
-        self.rules.append( Rule(body, definition, expression) )
+        self.rules.append( Rule.create(body, definition, expression) )
 
     def resolvequery(self, query):
         resolved = self.resolve(query.args, map(lambda x:x[0], query.targets) )
@@ -240,10 +284,21 @@ class Concept:
             pconcept.rules.append(r.save(context))
         return pconcept
 
+    def load(self, context, pconcept):
+        for pf in pconcept.facts:
+            self.facts.append( Fact.load(context, pf) )
+        for pr in pconcept.rules:
+            self.rules.append( Rule.load(context, pr) )
+
 class BodySaver:
     def __init__(self):
         self.atoms = {}
         self.concepts = {}
+
+class BodyLoader:
+    def __init__(self, body):
+        self.body = body
+        self.atoms = {}
 
 class Body:
     def __init__(self):
@@ -290,3 +345,21 @@ class Body:
             pbody.concepts.append( c.save(context) )
         with open(filename, 'wb') as f:
             f.write(pbody.SerializeToString())
+
+    @classmethod
+    def load(cls, filename):
+        pbody = kessot_pb2.Body()
+        with open(filename, 'rb') as f:
+            pbody.ParseFromString(f.read())
+        body = cls()
+        context = BodyLoader(body)
+        body.atoms.load(context, pbody.atoms)
+        for pc in pbody.concepts:
+            action = context.atoms[pc.action]
+            body.concepts[action] = Concept(action)
+        for pc in pbody.concepts:
+            body.concepts[context.atoms[pc.action]].load(context, pc)
+        return body
+
+def load(filename):
+    return Body.load(filename)
