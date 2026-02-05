@@ -23,6 +23,12 @@ class AtomManager:
             logging.info(f'Atom {word} registered')
         return self.atoms[word]
 
+    def atomize(self, adict):
+        result = {}
+        for k,v in adict.items():
+            result[self.get(k)] = self.get(v)
+        return result
+
     def save(self, context, patoms):
         for i, a in enumerate(self.atoms.values()):
             pa = kessot_pb2.Atom()
@@ -35,44 +41,57 @@ class AtomManager:
         for pa in patoms:
             context.atoms[pa.id] = self.get(pa.word)
 
-class Fact:
-    def __init__(self, args):
+class Tuple:
+    def __init__(self):
         self.args = {}
-        for a in args:
-            self.args[a[0]] = a[1]
+
+    def __iter__(self):
+        return iter(self.args.items())
+
+    def __getitem__(self, key):
+        return self.args[key]
+
+    def __contains__(self, key):
+        return key in self.args
 
     def match(self, args):
-        for a in args:
-            if a[0] not in self.args or self.args[a[0]] != a[1]:
+        for k,v in args.items():
+            if k not in self.args:
+                return False
+            if (not self.args[k].isvariable()) and self.args[k] != v:
                 return False
         return True
 
     def get(self, targets):
-        result = []
+        result = {}
         for t in targets:
             if t in self.args:
-                result.append( (t, self.args[t]) )
+                result[t] = self.args[t]
             else:
-                result.append( (t, None) )
+                result[t] = None
         return result
 
-    def makequery(self, context, query):
-        for aname, avalue in self.args.items():
-            if avalue.isvariable():
-                value = context.getvalue(avalue)
-                if value == None:
-                    query.targets.append( (aname, avalue) )
-                    query.tarvars[aname] = avalue
-                else:
-                    query.args.append( (aname, value) )
-            else:
-                query.args.append( (aname, avalue) )
+    def getvars(self):
+        lvars = []
+        for v in self.args.values():
+            if v.isvariable():
+                lvars.append(v)
+        return lvars
 
     def __repr__(self):
-        return f'<Fact {self.args}>'
+        return f'<Tuple {self.args}>'
+
+    @classmethod
+    def make(cls, args):
+        tup = cls()
+        for k,v in args.items():
+            tup.args[k] = v
+        return tup
 
     def save(self, context):
-        pfact = kessot_pb2.Fact()
+        return self.saveto(context, kessot_pb2.Tuple())
+
+    def saveto(self, context, pfact):
         for ak, av in self.args.items():
             parg = kessot_pb2.Argument()
             parg.role = context.atoms[ak]
@@ -82,148 +101,143 @@ class Fact:
 
     @classmethod
     def load(cls, context, pfact):
-        args = []
+        tup = cls()
         for parg in pfact.args:
-           args.append( (context.atoms[parg.role],context.atoms[parg.value]) )
-        return cls(args)
+           tup.args[context.atoms[parg.role]] = context.atoms[parg.value]
+        return tup
 
-class Query:
-    def __init__(self, action):
-        self.action = action
-        self.args = []
-        self.targets = []
-        self.tarvars = {}
-
-    def resolve(self):
-        return self.action.resolvequery(self)
-
-class Clause:
+class TupleContainer:
     def __init__(self):
-        self.action = None
-        self.args = None
+        self.tuples = []
 
-    def makequery(self, context):
-        query = Query(self.action)
-        self.args.makequery(context, query)
-        return query
+    def append(self, args):
+        if self.match(args) == None:
+            self.tuples.append(Tuple.make(args))
 
-    @classmethod
-    def create(cls, action, args):
-        clause = cls()
-        clause.action = action
-        clause.args = Fact(args)
-        return clause
+    def match(self, args):
+        for t in self.tuples:
+            if t.match(args):
+                return t
+        return None
 
-    def save(self, context):
-        pclause = kessot_pb2.Clause()
-        pclause.action = context.atoms[self.action.action]
-        pclause.args.CopyFrom( self.args.save(context) )
-        return pclause
+    def resolve(self, args, targets):
+        results = []
+        for t in self.tuples:
+            if t.match(args):
+                results.append( t.get(targets) )
+        return results
 
-    @classmethod
-    def load(cls, context, pclause):
-        clause = cls()
-        clause.action = context.body.getconcept(context.atoms[pclause.action])
-        clause.args = Fact.load(context, pclause.args)
-        return clause
+    def save(self, context, ptuples):
+        for t in self.tuples:
+            ptuples.append(t.save(context))
 
-class RuleResolveContext:
-    def __init__(self, rule, args):
+    def load(self, context, ptuples):
+        for pt in ptuples:
+            self.tuples.append(Tuple.load(context, pt))
+
+class RuleExpressionSolver:
+    def __init__(self, lvars):
+        self.lvars = dict(lvars)
+
+    def __repr__(self):
+        return f'<RES {self.lvars}>'
+
+    def __iter__(self):
+        return iter(self.lvars.items())
+
+    def __getitem__(self, key):
+        return self.lvars[key]
+
+    def __contains__(self, key):
+        return key in self.lvars
+
+    def solve(self, expression, body):
+        logging.debug(f'RES #{id(self):X}: local vars {self.lvars} expression {expression}')
+        args = {}
+        targets = []
+        for k,v in expression:
+            if v.isvariable():
+                if self.lvars[v] == None:
+                    targets.append(k)
+                else:
+                    args[k] = self.lvars[v]
+            else:
+                args[k] = v
+        res = body.resolve(args, targets)
+        logging.debug(f'RES #{id(self):X}: {args} for {targets} => {res}')
+        results = []
+        for r in res:
+            tarvar = dict(self.lvars)
+            for k,v in expression:
+                if v.isvariable() and tarvar[v] == None:
+                    tarvar[v] = r[k]
+            results.append(tarvar)
+        return results
+
+class RuleSolver:
+    def __init__(self, rule, body):
         self.rule = rule
-        self.lvars = {}
-        for v in self.rule.args.values():
-            self.lvars[v] = None
-        for a in args:
-            self.lvars[self.rule.args[a[0]]] = a[1]
-        self.expressions = []
+        self.body = body
 
-    def resolve(self):
-        logging.debug(f'Resolving context #{id(self):X}: {self.rule} with {self.lvars}')
-        expressions = []
-        expressions.append( ExpressionResolveContext(self) )
+    def run(self, args):
+        lvars = dict(self.rule.lvars)
+        for k,v in self.rule.definition:
+            if v.isvariable() and k in args:
+                lvars[v] = args[k]
+        logging.debug(f'RuleSolver #{id(self):X}: started local vars set to {lvars}')
+        current = [ RuleExpressionSolver(lvars) ]
         for e in self.rule.expressions:
             nextctx = []
-            for ec in expressions:
-                query = e.makequery(ec)
-                logging.debug(f'Resolving context #{id(self):X}: expression query {query.args} {query.targets}')
-                for r in query.resolve():
-                    nextctx.append( self.makenext(ec, r) )
-            expressions = nextctx
-        result = []
-        for e in expressions:
-            result.append(e.lvars)
-            logging.debug(f'Resolving context #{id(self):X}: result {e.lvars}')
-        return result
-
-    def makenext(self, ectx, varval):
-        result = ExpressionResolveContext(self)
-        for n,v in ectx.lvars.items():
-            if v != None:
-                result.lvars[n] = v
-        for n,v in varval.items():
-            result.lvars[n] = v
-        return result
-
-class ExpressionResolveContext:
-    def __init__(self,  context):
-        self.context = context
-        self.lvars = {}
-        for v in self.context.rule.inplace:
-            self.lvars[v] = None
-
-    def getvalue(self, varname):
-        if varname in self.lvars:
-            return self.lvars[varname]
-        return self.context.lvars[varname]
+            for c in current:
+                results = c.solve(e, self.body)
+                logging.debug(f'RuleSolver #{id(self):X}: intermediate results {results}')
+                for r in results:
+                    nextctx.append( RuleExpressionSolver(r) )
+            current = nextctx
+        logging.debug(f'RuleSolver #{id(self):X}: finished with {current}')
+        return current
 
 class Rule:
     def __init__(self):
-        self.args = {}
-        self.inplace = []
         self.definition = None
         self.expressions = []
+        self.lvars = {}
 
-    def resolve(self, args, targets):
-        logging.debug(f'Rule #{id(self):X} resolving with {args} and {targets}')
-        context = RuleResolveContext(self, args)
-        logging.debug(f'Rule #{id(self):X} resolving, context #{id(context):X} created with {context.lvars}')
-        result = []
-        for r in context.resolve():
-            ts = []
-            for tr in targets:
-                ts.append( (tr, r[self.args[tr]]) )
-            result.append(ts)
-        return result
+    def makevars(self):
+        self.lvars = {}
+        for d in [ self.definition, *self.expressions ]:
+            for v in d.getvars():
+                self.lvars[v] = None
 
     def __repr__(self):
-        return f'<Rule {self.args} {self.definition} {self.inplace}>'
-
-    def setvars(self):
-        largs = []
-        for role, value in self.definition.args.items():
-            if value.isvariable() and value not in self.args:
-                self.args[role] = value
-                largs.append(value)
-        for e in self.expressions:
-            for eavalue in e.args.args.values():
-                if eavalue.isvariable() and eavalue not in largs and eavalue not in self.inplace:
-                    self.inplace.append(eavalue)
+        return f'<Rule {self.definition} => {self.expressions}>'
 
     @classmethod
-    def create(cls, body, definition, expression):
-        ''' definition is a list of args; expression is a list of tuples (action, args). Args are tuples themselves '''
+    def make(cls, header, expressions):
         rule = cls()
-        logging.debug(f'Rule #{id(rule):X} creation for {definition} {expression}')
-        rule.definition = Fact(definition)
-        for e in expression:
-            rule.expressions.append( Clause.create(body.getconcept(e[0]), e[1]) )
-        rule.setvars()
-        logging.debug(f'Rule #{id(rule):X} created with {rule.args} and {rule.inplace}')
+        rule.definition = Tuple.make(header)
+        for e in expressions:
+            rule.expressions.append( Tuple.make(e) )
+        rule.makevars()
         return rule
+
+    def match(self, args):
+        return self.definition.match(args)
+
+    def apply(self, args, targets, body):
+        logging.debug(f'Applying {args} for {targets} to {self.expressions}')
+        solver = RuleSolver(self, body)
+        results = []
+        for r in solver.run(args):
+            resvar = {}
+            for t in targets:
+                resvar[t] = r[self.definition[t]]
+            results.append(resvar)
+        return results
 
     def save(self, context):
         prule = kessot_pb2.Rule()
-        prule.definition.CopyFrom( self.definition.save(context) )
+        self.definition.saveto(context, prule.definition)
         for e in self.expressions:
             prule.expressions.append( e.save(context) )
         return prule
@@ -231,69 +245,42 @@ class Rule:
     @classmethod
     def load(cls, context, prule):
         rule = cls()
-        rule.definition = Fact.load(context, prule.definition)
-        for pe in prule.expressions:
-            rule.expressions.append( Clause.load(context, pe) )
-        rule.setvars()
+        rule.definition = Tuple.load(context, prule.definition)
+        for e in prule.expressions:
+            rule.expressions.append( Tuple.load(context, e) )
+        rule.makevars()
         return rule
 
-class Concept:
-    def __init__(self, action):
-        self.action = action
-        self.facts = []
+class RuleContainer:
+    def __init__(self):
         self.rules = []
 
-    def append(self, args):
-        for f in self.facts:
-            if f.match(args):
-                return
-        self.facts.append( Fact(args) )
-        logging.debug(f'Concept {self.action} {args} added')
+    def append(self, header, expressions):
+        rule = Rule.make(header, expressions)
+        self.rules.append(rule)
+        logging.info(f'{rule} appended')
+        return rule
 
-    def addrule(self, body, definition, expression):
-        self.rules.append( Rule.create(body, definition, expression) )
-
-    def resolvequery(self, query):
-        resolved = self.resolve(query.args, map(lambda x:x[0], query.targets) )
-        result = []
-        for r in resolved:
-            vals = {}
-            for k,v in r:
-                vals[query.tarvars[k]] = v
-            result.append(vals)
-        logging.info(f'Concept resolved query with {query.targets} and {resolved} with {result}')
-        return result
-
-    def resolve(self, args, targets):
-        result = []
-        for f in self.facts:
-            if f.match(args):
-                result.append(f.get(targets))
-        if len(result) == 0:
-            for r in self.rules:
-                result.extend(r.resolve(args, targets))
-        logging.info(f'Concept resolved with with {result}')
-        return result
-
-    def save(self, context):
-        pconcept = kessot_pb2.Concept()
-        pconcept.action = context.atoms[self.action]
-        for f in self.facts:
-            pconcept.facts.append(f.save(context))
+    def resolve(self, args, targets, body):
+        results = []
         for r in self.rules:
-            pconcept.rules.append(r.save(context))
-        return pconcept
+            if r.match(args):
+                results.extend( r.apply(args, targets, body) )
+        return results
 
-    def load(self, context, pconcept):
-        for pf in pconcept.facts:
-            self.facts.append( Fact.load(context, pf) )
-        for pr in pconcept.rules:
-            self.rules.append( Rule.load(context, pr) )
+    def save(self, context, prules):
+        for r in self.rules:
+            prules.append(r.save(context))
+
+    def load(self, context, prules):
+        for pr in prules:
+            self.rules.append(Rule.load(context, pr))
+
 
 class BodySaver:
-    def __init__(self):
+    def __init__(self, body):
+        self.body = body
         self.atoms = {}
-        self.concepts = {}
 
 class BodyLoader:
     def __init__(self, body):
@@ -303,46 +290,32 @@ class BodyLoader:
 class Body:
     def __init__(self):
         self.atoms = AtomManager()
-        self.concepts = {}
+        self.facts = TupleContainer()
+        self.rules = RuleContainer()
 
-    def addfact(self, action, args):
-        (action, args) = self.atomize(action, args)
-        self.getconcept(action).append(args)
+    def addfact(self, args):
+        self.facts.append(self.atoms.atomize(args))
 
-    def addrule(self, definition, expression):
-        definition = self.atomize(*definition)
-        expression = list(map( lambda x: self.atomize(*x), expression))
-        self.getconcept( definition[0] ).addrule(self, definition[1], expression)
+    def addrule(self, header, expressions):
+        self.rules.append(self.atoms.atomize(header), list(map(lambda x: self.atoms.atomize(x), expressions)) )
 
-    def resolve_strings(self, action, args, results):
-        (action, args) = self.atomize(action, args)
-        results = list(map( lambda x: self.atoms.get(x), results))
-        return self.resolve(action, args, results)
+    def resolve(self, args, targets):
+        logging.info(f'Resolving {args} {targets}')
+        results = self.facts.resolve(args, targets)
+        if len(results) == 0:
+            results = self.rules.resolve(args, targets, self)
+        logging.info(f'Concept resolved with with {results}')
+        return results
 
-    def resolve(self, action, args, results):
-        if action not in self.concepts:
-            return None
-        logging.info(f'Resolving {action} {args} {results}')
-        return self.concepts[action].resolve(args, results)
-
-    def atomize(self, action, args):
-        action = self.atoms.get(action)
-        args = list(map( lambda x: tuple(map(lambda y:self.atoms.get(y), x.split(':'))), args))
-        return (action, args)
-
-    def getconcept(self, action):
-        if action not in self.concepts:
-            self.concepts[action] = Concept(action)
-        return self.concepts[action]
+    def resolve_strings(self, args, results):
+        return self.resolve(self.atoms.atomize(args), list(map(lambda x: self.atoms.get(x), results)) )
 
     def save(self, filename):
-        context = BodySaver()
+        context = BodySaver(self)
         pbody = kessot_pb2.Body()
         self.atoms.save(context, pbody.atoms)
-        for c in self.concepts.values():
-            context.concepts[c] = context.atoms[c.action]
-        for c in self.concepts.values():
-            pbody.concepts.append( c.save(context) )
+        self.facts.save(context, pbody.facts)
+        self.rules.save(context, pbody.rules)
         with open(filename, 'wb') as f:
             f.write(pbody.SerializeToString())
 
@@ -354,11 +327,8 @@ class Body:
         body = cls()
         context = BodyLoader(body)
         body.atoms.load(context, pbody.atoms)
-        for pc in pbody.concepts:
-            action = context.atoms[pc.action]
-            body.concepts[action] = Concept(action)
-        for pc in pbody.concepts:
-            body.concepts[context.atoms[pc.action]].load(context, pc)
+        body.facts.load(context, pbody.facts)
+        body.rules.load(context, pbody.rules)
         return body
 
 def load(filename):

@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0ckessot.proto\x12\x06kessot\" \n\x04\x41tom\x12\n\n\x02id\x18\x01 \x01(\r\x12\x0c\n\x04word\x18\x02 \x01(\t\"\'\n\x08\x41rgument\x12\x0c\n\x04role\x18\x01 \x01(\r\x12\r\n\x05value\x18\x02 \x01(\r\"&\n\x04\x46\x61\x63t\x12\x1e\n\x04\x61rgs\x18\x01 \x03(\x0b\x32\x10.kessot.Argument\"4\n\x06\x43lause\x12\x0e\n\x06\x61\x63tion\x18\x01 \x01(\r\x12\x1a\n\x04\x61rgs\x18\x02 \x01(\x0b\x32\x0c.kessot.Fact\"M\n\x04Rule\x12 \n\ndefinition\x18\x01 \x01(\x0b\x32\x0c.kessot.Fact\x12#\n\x0b\x65xpressions\x18\x02 \x03(\x0b\x32\x0e.kessot.Clause\"S\n\x07\x43oncept\x12\x0e\n\x06\x61\x63tion\x18\x01 \x01(\r\x12\x1b\n\x05\x66\x61\x63ts\x18\x02 \x03(\x0b\x32\x0c.kessot.Fact\x12\x1b\n\x05rules\x18\x03 \x03(\x0b\x32\x0c.kessot.Rule\"F\n\x04\x42ody\x12\x1b\n\x05\x61toms\x18\x01 \x03(\x0b\x32\x0c.kessot.Atom\x12!\n\x08\x63oncepts\x18\x02 \x03(\x0b\x32\x0f.kessot.Conceptb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0ckessot.proto\x12\x06kessot\" \n\x04\x41tom\x12\n\n\x02id\x18\x01 \x01(\r\x12\x0c\n\x04word\x18\x02 \x01(\t\"\'\n\x08\x41rgument\x12\x0c\n\x04role\x18\x01 \x01(\r\x12\r\n\x05value\x18\x02 \x01(\r\"\'\n\x05Tuple\x12\x1e\n\x04\x61rgs\x18\x01 \x03(\x0b\x32\x10.kessot.Argument\"M\n\x04Rule\x12!\n\ndefinition\x18\x01 \x01(\x0b\x32\r.kessot.Tuple\x12\"\n\x0b\x65xpressions\x18\x03 \x03(\x0b\x32\r.kessot.Tuple\"^\n\x04\x42ody\x12\x1b\n\x05\x61toms\x18\x01 \x03(\x0b\x32\x0c.kessot.Atom\x12\x1c\n\x05\x66\x61\x63ts\x18\x02 \x03(\x0b\x32\r.kessot.Tuple\x12\x1b\n\x05rules\x18\x03 \x03(\x0b\x32\x0c.kessot.Ruleb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -35,14 +35,10 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_ATOM']._serialized_end=56
   _globals['_ARGUMENT']._serialized_start=58
   _globals['_ARGUMENT']._serialized_end=97
-  _globals['_FACT']._serialized_start=99
-  _globals['_FACT']._serialized_end=137
-  _globals['_CLAUSE']._serialized_start=139
-  _globals['_CLAUSE']._serialized_end=191
-  _globals['_RULE']._serialized_start=193
-  _globals['_RULE']._serialized_end=270
-  _globals['_CONCEPT']._serialized_start=272
-  _globals['_CONCEPT']._serialized_end=355
-  _globals['_BODY']._serialized_start=357
-  _globals['_BODY']._serialized_end=427
+  _globals['_TUPLE']._serialized_start=99
+  _globals['_TUPLE']._serialized_end=138
+  _globals['_RULE']._serialized_start=140
+  _globals['_RULE']._serialized_end=217
+  _globals['_BODY']._serialized_start=219
+  _globals['_BODY']._serialized_end=313
 # @@protoc_insertion_point(module_scope)

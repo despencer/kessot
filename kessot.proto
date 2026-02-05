@@ -14,32 +14,20 @@ message Argument
  uint32 value = 2;  // Atom reference
 }
 
-message Fact
+message Tuple
 {
  repeated Argument args = 1;
 }
 
-message Clause
-{
- uint32 action = 1;         // Concept reference via Atom
- Fact args = 2;
-}
-
 message Rule
 {
- Fact definition = 1;
- repeated Clause expressions = 2;
-}
-
-message Concept
-{
- uint32 action = 1;         // Atom reference
- repeated Fact facts = 2;
- repeated Rule rules = 3;
+ Tuple definition = 1;
+ repeated Tuple expressions = 3;
 }
 
 message Body
 {
  repeated Atom atoms = 1;
- repeated Concept concepts = 2;
+ repeated Tuple facts = 2;
+ repeated Rule rules = 3;
 }
