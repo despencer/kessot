@@ -276,6 +276,54 @@ class RuleContainer:
         for pr in prules:
             self.rules.append(Rule.load(context, pr))
 
+class ParsingRule:
+    def __init__(self):
+        self.definition = None
+        self.expressions = []
+
+    def __repr__(self):
+        return f'<ParsingRule {self.definition} => {self.expressions}>'
+
+    @classmethod
+    def make(cls, header, expressions):
+        rule = cls()
+        rule.definition = Tuple.make(header)
+        for e in expressions:
+            rule.expressions.append( Tuple.make(e) )
+        return rule
+
+    def save(self, context):
+        prule = kessot_pb2.Rule()
+        self.definition.saveto(context, prule.definition)
+        for e in self.expressions:
+            prule.expressions.append( e.save(context) )
+        return prule
+
+    @classmethod
+    def load(cls, context, prule):
+        rule = cls()
+        rule.definition = Tuple.load(context, prule.definition)
+        for e in prule.expressions:
+            rule.expressions.append( Tuple.load(context, e) )
+        return rule
+
+class ParsingContainer:
+    def __init__(self):
+        self.rules = []
+
+    def append(self, header, expressions):
+        rule = ParsingRule.make(header, expressions)
+        self.rules.append(rule)
+        logging.info(f'{rule} appended')
+        return rule
+
+    def save(self, context, prules):
+        for r in self.rules:
+            prules.append(r.save(context))
+
+    def load(self, context, prules):
+        for pr in prules:
+            self.rules.append(ParsingRule.load(context, pr))
 
 class BodySaver:
     def __init__(self, body):
@@ -292,12 +340,16 @@ class Body:
         self.atoms = AtomManager()
         self.facts = TupleContainer()
         self.rules = RuleContainer()
+        self.parsing = ParsingContainer()
 
     def addfact(self, args):
         self.facts.append(self.atoms.atomize(args))
 
     def addrule(self, header, expressions):
         self.rules.append(self.atoms.atomize(header), list(map(lambda x: self.atoms.atomize(x), expressions)) )
+
+    def addparsing(self, header, expressions):
+        self.parsing.append(self.atoms.atomize(header), list(map(lambda x: self.atoms.atomize(x), expressions)) )
 
     def resolve(self, args, targets):
         logging.info(f'Resolving {args} {targets}')
@@ -316,6 +368,7 @@ class Body:
         self.atoms.save(context, pbody.atoms)
         self.facts.save(context, pbody.facts)
         self.rules.save(context, pbody.rules)
+        self.parsing.save(context, pbody.parsing)
         with open(filename, 'wb') as f:
             f.write(pbody.SerializeToString())
 
@@ -329,6 +382,7 @@ class Body:
         body.atoms.load(context, pbody.atoms)
         body.facts.load(context, pbody.facts)
         body.rules.load(context, pbody.rules)
+        body.parsing.load(context, pbody.parsing)
         return body
 
 def load(filename):
