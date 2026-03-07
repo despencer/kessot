@@ -54,12 +54,14 @@ class Tuple:
     def __contains__(self, key):
         return key in self.args
 
-    def match(self, args):
+    def match(self, args, strict=False):
         for k,v in args.items():
             if k not in self.args:
                 return False
             if (not self.args[k].isvariable()) and self.args[k] != v:
                 return False
+        if strict:
+            return len(self.args) == len(args)
         return True
 
     def get(self, targets):
@@ -284,6 +286,27 @@ class ParsingRule:
     def __repr__(self):
         return f'<ParsingRule {self.definition} => {self.expressions}>'
 
+    def match(self, context):
+        return self.definition.match(context.current[-1], strict=True)
+
+    def apply(self, context):
+        logging.debug(f'Applying starts {self} for {context}')
+        current = context.current.pop(-1)
+        lvars = {}
+        for k, v in self.definition:
+            if v.isvariable():
+                lvars[v] = current[k]
+        logging.debug(f'Lvars {lvars}')
+        for e in self.expressions:
+            nextcur = {}
+            for k,v in e:
+                if v.isvariable():
+                    nextcur[k] = lvars[v]
+                else:
+                    nextcur[k] = v
+            context.current.append(nextcur)
+        logging.debug(f'Applying ends {self} for {context}')
+
     @classmethod
     def make(cls, header, expressions):
         rule = cls()
@@ -317,6 +340,17 @@ class ParsingContainer:
         logging.info(f'{rule} appended')
         return rule
 
+    def parse(self, context):
+        logging.info(f'Parsing starts with {context}')
+        todo = True
+        while todo:
+            todo = False
+            for r in self.rules:
+                if r.match(context):
+                    r.apply(context)
+                    todo = True
+        logging.info(f'Parsing ends with {context}')
+
     def save(self, context, prules):
         for r in self.rules:
             prules.append(r.save(context))
@@ -324,6 +358,16 @@ class ParsingContainer:
     def load(self, context, prules):
         for pr in prules:
             self.rules.append(ParsingRule.load(context, pr))
+
+class ParsingContext:
+    def __init__(self):
+        self.current = [ {} ]
+
+    def __repr__(self):
+        return f'{self.current}'
+
+    def put(self, key, value):
+        self.current[-1][key] = value
 
 class BodySaver:
     def __init__(self, body):
@@ -359,8 +403,14 @@ class Body:
         logging.info(f'Concept resolved with with {results}')
         return results
 
+    def parse(self, context):
+        self.parsing.parse(context)
+
     def resolve_strings(self, args, results):
         return self.resolve(self.atoms.atomize(args), list(map(lambda x: self.atoms.get(x), results)) )
+
+    def getatom(self, astr):
+        return self.atoms.get(astr)
 
     def save(self, filename):
         context = BodySaver(self)
@@ -385,5 +435,22 @@ class Body:
         body.parsing.load(context, pbody.parsing)
         return body
 
+class Talker:
+    def __init__(self, body):
+        self.body = body
+        self.next = self.body.getatom('next')
+        self.context = ParsingContext()
+
+    def put(self, prompt):
+        logging.info(f'Prompt "{prompt}" provided, context={self.context}')
+        for c in prompt:
+            ac = self.body.getatom(c)
+            logging.info(f'Processing {ac}, context={self.context}')
+            self.context.put(self.next, ac)
+            self.body.parse(self.context)
+
 def load(filename):
     return Body.load(filename)
+
+def maketalker(filename):
+    return Talker(load(filename))
