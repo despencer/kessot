@@ -369,6 +369,11 @@ class ParsingContext:
     def put(self, key, value):
         self.current[-1][key] = value
 
+    def get(self, key):
+        if key in self.current[-1]:
+            return self.current[-1][key]
+        return None
+
 class BodySaver:
     def __init__(self, body):
         self.body = body
@@ -439,15 +444,36 @@ class Talker:
     def __init__(self, body):
         self.body = body
         self.next = self.body.getatom('next')
+        self.reaction = self.body.getatom('reaction')
         self.context = ParsingContext()
+        self.reactions = { self.body.getatom('resolve') : self.resolve }
 
     def put(self, prompt):
         logging.info(f'Prompt "{prompt}" provided, context={self.context}')
+        result = []
         for c in prompt:
             ac = self.body.getatom(c)
             logging.info(f'Processing {ac}, context={self.context}')
             self.context.put(self.next, ac)
             self.body.parse(self.context)
+            reaction = self.context.get(self.reaction)
+            if reaction != None:
+                result.extend( self.reactions[reaction]() )
+        logging.info(f'Prompt "{prompt}" done, context={self.context}')
+        return ''.join( map(lambda x: x.word, result))
+
+    def resolve(self):
+        logging.debug(f'Resolving starts with {self.context}')
+        current = self.context.current.pop(-1)
+        current.pop(self.reaction)
+        self.context.current.append({})
+        question = current.pop(self.body.getatom('question'))
+        result = self.body.resolve(current, [ question ] )
+        logging.debug(f'Resolving ends with {self.context}')
+        if len(result) > 0:
+            if question in result[0]:
+                return [ result[0][question] ]
+        return []
 
 def load(filename):
     return Body.load(filename)
