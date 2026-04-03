@@ -1,0 +1,3 @@
+- maintenance:
+    - fact: {'action':'+', 'dobj':'1', 'iobj':'1', 'result':'2'}
+    - fact: {'action':'+', 'dobj':'1', 'iobj':'2', 'result':'3'}
