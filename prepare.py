@@ -15,6 +15,7 @@ if __name__ == '__main__':
           [ {'action':'+', 'dobj':'1', 'iobj':'$a', 'result':'$x'},
             {'action':'+', 'dobj':'$a', 'iobj':'$y', 'result':'$b'},
             {'action':'+', 'dobj':'1', 'iobj':'$b', 'result':'$z'} ] )
+    body.addempty( {'action':'notbe', 'subj':'$x', 'dobj':'$y'}, {'action':'be', 'subj':'$x', 'dobj':'$y'} ) 
     body.addparsing( {'next':'$x'}, [ {'subj':'$x'} ] )
     body.addparsing( {'subj':'$x', 'next':'+'}, [ {'action':'+', 'dobj':'$x'} ] )
     body.addparsing( {'action':'+', 'dobj':'$x', 'next':'$y'}, [ {'action':'+', 'dobj':'$x', 'iobj':'$y'} ] )

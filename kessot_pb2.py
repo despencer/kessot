@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0ckessot.proto\x12\x06kessot\" \n\x04\x41tom\x12\n\n\x02id\x18\x01 \x01(\r\x12\x0c\n\x04word\x18\x02 \x01(\t\"\'\n\x08\x41rgument\x12\x0c\n\x04role\x18\x01 \x01(\r\x12\r\n\x05value\x18\x02 \x01(\r\"\'\n\x05Tuple\x12\x1e\n\x04\x61rgs\x18\x01 \x03(\x0b\x32\x10.kessot.Argument\"M\n\x04Rule\x12!\n\ndefinition\x18\x01 \x01(\x0b\x32\r.kessot.Tuple\x12\"\n\x0b\x65xpressions\x18\x02 \x03(\x0b\x32\r.kessot.Tuple\"}\n\x04\x42ody\x12\x1b\n\x05\x61toms\x18\x01 \x03(\x0b\x32\x0c.kessot.Atom\x12\x1c\n\x05\x66\x61\x63ts\x18\x02 \x03(\x0b\x32\r.kessot.Tuple\x12\x1b\n\x05rules\x18\x03 \x03(\x0b\x32\x0c.kessot.Rule\x12\x1d\n\x07parsing\x18\x04 \x03(\x0b\x32\x0c.kessot.Ruleb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0ckessot.proto\x12\x06kessot\" \n\x04\x41tom\x12\n\n\x02id\x18\x01 \x01(\r\x12\x0c\n\x04word\x18\x02 \x01(\t\"\'\n\x08\x41rgument\x12\x0c\n\x04role\x18\x01 \x01(\r\x12\r\n\x05value\x18\x02 \x01(\r\"\'\n\x05Tuple\x12\x1e\n\x04\x61rgs\x18\x01 \x03(\x0b\x32\x10.kessot.Argument\"M\n\x04Rule\x12!\n\ndefinition\x18\x01 \x01(\x0b\x32\r.kessot.Tuple\x12\"\n\x0b\x65xpressions\x18\x02 \x03(\x0b\x32\r.kessot.Tuple\"H\n\x05\x45mpty\x12!\n\ndefinition\x18\x01 \x01(\x0b\x32\r.kessot.Tuple\x12\x1c\n\x05query\x18\x02 \x01(\x0b\x32\r.kessot.Tuple\"\x9d\x01\n\x04\x42ody\x12\x1b\n\x05\x61toms\x18\x01 \x03(\x0b\x32\x0c.kessot.Atom\x12\x1c\n\x05\x66\x61\x63ts\x18\x02 \x03(\x0b\x32\r.kessot.Tuple\x12\x1b\n\x05rules\x18\x03 \x03(\x0b\x32\x0c.kessot.Rule\x12\x1d\n\x07parsing\x18\x04 \x03(\x0b\x32\x0c.kessot.Rule\x12\x1e\n\x07\x65mpties\x18\x05 \x03(\x0b\x32\r.kessot.Emptyb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -39,6 +39,8 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_TUPLE']._serialized_end=138
   _globals['_RULE']._serialized_start=140
   _globals['_RULE']._serialized_end=217
-  _globals['_BODY']._serialized_start=219
-  _globals['_BODY']._serialized_end=344
+  _globals['_EMPTY']._serialized_start=219
+  _globals['_EMPTY']._serialized_end=291
+  _globals['_BODY']._serialized_start=294
+  _globals['_BODY']._serialized_end=451
 # @@protoc_insertion_point(module_scope)

@@ -25,10 +25,17 @@ message Rule
  repeated Tuple expressions = 2;
 }
 
+message Empty
+{
+ Tuple definition = 1;
+ Tuple query = 2;
+}
+
 message Body
 {
  repeated Atom atoms = 1;
  repeated Tuple facts = 2;
  repeated Rule rules = 3;
  repeated Rule parsing = 4;
+ repeated Empty empties = 5;
 }
