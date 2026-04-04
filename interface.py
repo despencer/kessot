@@ -42,7 +42,7 @@ class Maintenance:
     def do(self, prompt):
         logging.info('Entering maintenance mode')
         for yfunc in prompt:
-            func, value = select( {'fact': self.addfact}, yfunc)
+            func, value = select( {'fact': self.addfact, 'rule':self.addrule}, yfunc)
             func(value)
         logging.info('Leaving maintenance mode')
 
@@ -50,6 +50,11 @@ class Maintenance:
         logging.info(f'About to add fact {yfact}')
         self.body.addfact(yfact)
         logging.info(f'Fact {yfact} added')
+
+    def addrule(self, yrule):
+        logging.info(f'About to add rule {yrule}')
+        self.body.addrule(yrule['definition'], yrule['expression'])
+        logging.info(f'Fact {yrule} added')
 
 class Interface:
     def __init__(self, body):
