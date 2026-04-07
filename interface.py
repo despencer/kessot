@@ -1,4 +1,5 @@
 import logging
+import reasoning
 
 def select(lookup, item):
     itemtype = list(item.keys())[0]
@@ -9,6 +10,7 @@ def select(lookup, item):
 class Test:
     def __init__(self, body):
         self.body = body
+        self.solver = reasoning.Solver(body)
 
     def do(self, prompt):
         logging.info('Entering test mode')
@@ -19,7 +21,7 @@ class Test:
 
     def resolve(self, ytest):
         logging.info(f'About to test resolve {ytest}')
-        results = self.body.resolve_strings( ytest['args'], list(ytest['targets'].keys()) )
+        results = self.solver.resolve_strings( ytest['args'], list(ytest['targets'].keys()) )
         if len(results) != 1:
             print(f'Bad number of results {len(results)}')
         else:
