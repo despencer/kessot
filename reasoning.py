@@ -65,17 +65,45 @@ class Body:
         body.parsing.load(context, pbody.parsing)
         return body
 
+class Query:
+    def __init__(self, args, targets):
+        self.args = tuples.Tuple.make(args)
+        self.targets = targets
+
+    def issame(self, args, targets):
+        if not self.args.match(args, strict=True):
+            return False
+        if len(self.targets) != len(targets):
+            return False
+        for t in targets:
+            if t not in self.targets:
+                return False
+        return True
+
 class Solver:
     def __init__(self, body):
         self.body = body
+        self.queries = []
 
     def resolve(self, args, targets):
         logging.info(f'Resolving {args} {targets}')
-        results = self.body.facts.resolve(args, targets)
-        if len(results) == 0:
-            results = self.body.rules.resolve(args, targets, self)
+        if self.checkcycle(args, targets):
+            logging.info('Cycle detected')
+            results = []
+        else:
+            results = self.body.facts.resolve(args, targets)
+            if len(results) == 0:
+                results = self.body.rules.resolve(args, targets, self)
+            self.queries.pop(-1)
         logging.info(f'Concept resolved with with {results}')
         return results
+
+    def checkcycle(self, args, targets):
+        for q in self.queries:
+            if q.issame(args, targets):
+                return True
+        self.queries.append( Query(args, targets) )
+        return False
 
     def resolve_strings(self, args, results):
         return self.resolve(self.body.atoms.atomize(args), list(map(lambda x: self.body.atoms.get(x), results)) )
