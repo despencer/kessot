@@ -21,20 +21,28 @@ class Test:
 
     def resolve(self, ytest):
         logging.info(f'About to test resolve {ytest}')
-        results = self.solver.resolve_strings( ytest['args'], list(ytest['targets'].keys()) )
-        if len(results) != 1:
-            print(f'Bad number of results {len(results)}')
+        if ytest['targets'] == None:
+            targets = []
         else:
-            results = results[0]
-            for k,v in ytest['targets'].items():
-                ak = self.body.getatom(k)
-                if ak not in results:
-                    print(f"key '{k}' is not found among results '{results}' in test {ytest}")
-                else:
-                    if results[ak] != self.body.getatom(v):
-                        print(f"Different result for '{k}': {results[ak]} vs '{v}' in test {ytest}")
-            if len(results) != len(ytest['targets']):
-                print(f"Different number of results {len(results)} vs {len(ytest['targets'])} in test {ytest}")
+            targets = list(ytest['targets'].keys())
+        results = self.solver.resolve_strings( ytest['args'], targets)
+        if ytest['targets'] == None:
+            if len(results) > 0:
+                print(f'Bad number of results {len(results)} for None expected')
+        else:
+            if len(results) != 1:
+                print(f'Bad number of results {len(results)} for 1 expected')
+            else:
+                results = results[0]
+                for k,v in ytest['targets'].items():
+                    ak = self.body.getatom(k)
+                    if ak not in results:
+                        print(f"key '{k}' is not found among results '{results}' in test {ytest}")
+                    else:
+                        if results[ak] != self.body.getatom(v):
+                            print(f"Different result for '{k}': {results[ak]} vs '{v}' in test {ytest}")
+                if len(results) != len(ytest['targets']):
+                    print(f"Different number of results {len(results)} vs {len(ytest['targets'])} in test {ytest}")
         logging.info(f'Test {ytest} finished')
 
 class Maintenance:

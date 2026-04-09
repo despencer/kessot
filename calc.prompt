@@ -7,6 +7,12 @@
     - resolve:
          args: {'action':'+', 'dobj':'1', 'iobj':'1'}
          targets: {'result':'2'}
+    - resolve:
+         args: {'action':'+', 'dobj':'1', 'iobj':'1', 'result':'2'}
+         targets: {}
+    - resolve:
+         args: {'action':'+', 'dobj':'1', 'iobj':'1', 'result':'3'}
+         targets: null
 - maintenance:
     - rule:
          definition: {'action':'+','dobj':'$x', 'iobj':'$y', 'result':'$z'}
@@ -20,6 +26,8 @@
     - resolve:
          args: {'action':'+', 'dobj':'3', 'result':'4'}
          targets: {'iobj':'1'}
+         args: {'action':'+', 'iobj':'3', 'result':'4'}
+         targets: {'dobj':'1'}
 - maintenance:
     - fact: {'action':'be', 'subj':'1', 'dobj':'digit'}
 
