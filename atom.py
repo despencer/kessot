@@ -4,11 +4,14 @@ import kessot_pb2
 class Atom:
     def __init__(self, word):
         self.word = word
+        self.special = {' ':'space'}
 
     def isvariable(self):
         return self.word[0] == '$'
 
     def __repr__(self):
+        if self.word in self.special:
+            return '#' + self.special[self.word]
         return '#' + self.word
 
 class AtomManager:

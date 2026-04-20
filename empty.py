@@ -1,4 +1,6 @@
 import logging
+import tuples
+import kessot_pb2
 
 class EmptyRule:
     def __init__(self):
@@ -6,31 +8,30 @@ class EmptyRule:
         self.query = None
 
     def __repr__(self):
-        return f'<Empty {self.definition} => {self.expressions}>'
+        return f'<Empty {self.definition} => {self.query}>'
 
     @classmethod
     def make(cls, header, query):
         rule = cls()
-        rule.definition = Tuple.make(header)
-        rule.query = Tuple.make(query)
+        rule.definition = tuples.Tuple.make(header)
+        rule.query = tuples.Tuple.make(query)
         return rule
 
-    def match(self, args, body):
-        logging.debug(f'EmptyRule #{id(self):X}: match request for {args}')
-        lvars = {}
-        for k,v in args.items():
-            if k not in self.definition:
-                return False
-            if self.definition[k].isvariable():
-                lvars[ self.definition[k] ] = v
-        aquery = {}
-        for k,v in self.query.items():
-            if v.isvariable():
-                aquery[k] = lvars[v]
-            else:
-                aquery[k]=v
-        logging.debug(f'EmptyRule #{id(self):X}: request for body with {aquery}')
-        return body.match(aquery)
+    def match(self, args, solver):
+        return self.definition.match(args)
+
+    def resolve(self, args, solver):
+        logging.debug(f'{solver.indent()}EmptyRule #{id(self):X}: {self} resolve request for {args}')
+        lvars = self.definition.matchvars(args)
+        logging.debug(f'{solver.indent()}EmptyRule #{id(self):X}: vars: {lvars}')
+        aquery = self.query.substitute(lvars)
+        logging.debug(f'{solver.indent()}EmptyRule #{id(self):X}: query: {aquery}')
+        if len(solver.resolve(aquery, [])) == 0:
+            result = [ {} ]
+        else:
+            result = []
+        logging.debug(f'{solver.indent()}EmptyRule #{id(self):X}: returns with {result}')
+        return result
 
     def save(self, context):
         prule = kessot_pb2.Empty()
@@ -50,15 +51,17 @@ class EmptyContainer:
         self.rules = []
 
     def append(self, header, query):
-        rule = Empty.make(header, query)
+        rule = EmptyRule.make(header, query)
         self.rules.append(rule)
         logging.info(f'{rule} appended')
         return rule
 
-    def match(self, args, body):
+    def resolve(self, args, solver):
+        results = []
         for r in self.rules:
-            if r.match(args, body):
-                return r
+            if r.match(args, solver):
+                results.extend(r.resolve(args, solver))
+        return results
 
     def save(self, context, prules):
         for r in self.rules:
@@ -66,4 +69,5 @@ class EmptyContainer:
 
     def load(self, context, prules):
         for pr in prules:
-            self.rules.append(Rule.load(context, pr))
+            self.rules.append(EmptyRule.load(context, pr))
+

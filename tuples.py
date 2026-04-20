@@ -24,6 +24,13 @@ class Tuple:
             return len(self.args) == len(args)
         return True
 
+    def matchvars(self, args):
+        lvars = {}
+        for k,v in self.args.items():
+            if v.isvariable():
+                lvars[v] = args[k]
+        return lvars
+
     def get(self, targets):
         result = {}
         for t in targets:
@@ -31,6 +38,15 @@ class Tuple:
                 result[t] = self.args[t]
             else:
                 result[t] = None
+        return result
+
+    def substitute(self, lvars):
+        result = {}
+        for k,v in self.args.items():
+            if v.isvariable():
+                result[k] = lvars[v]
+            else:
+                result[k] = v
         return result
 
     def getvars(self):

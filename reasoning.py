@@ -48,6 +48,7 @@ class Body:
         self.atoms.save(context, pbody.atoms)
         self.facts.save(context, pbody.facts)
         self.rules.save(context, pbody.rules)
+        self.empty.save(context, pbody.empties)
         self.parsing.save(context, pbody.parsing)
         with open(filename, 'wb') as f:
             f.write(pbody.SerializeToString())
@@ -62,6 +63,7 @@ class Body:
         body.atoms.load(context, pbody.atoms)
         body.facts.load(context, pbody.facts)
         body.rules.load(context, pbody.rules)
+        body.empty.load(context, pbody.empties)
         body.parsing.load(context, pbody.parsing)
         return body
 
@@ -86,16 +88,18 @@ class Solver:
         self.queries = []
 
     def resolve(self, args, targets):
-        logging.info(f'Resolving {args} {targets}')
+        logging.info(f' {self.indent()}Resolving {args} {targets}')
         if self.checkcycle(args, targets):
-            logging.info('Cycle detected')
+            logging.info(' {self.indent()}Cycle detected')
             results = []
         else:
             results = self.body.facts.resolve(args, targets)
             if len(results) == 0:
                 results = self.body.rules.resolve(args, targets, self)
+            if len(results) == 0 and len(targets) == 0:
+                results = self.body.empty.resolve(args, self)
             self.queries.pop(-1)
-        logging.info(f'Concept resolved with with {results}')
+        logging.info(f' {self.indent()}Concept resolved with with {results}')
         return results
 
     def checkcycle(self, args, targets):
@@ -107,6 +111,9 @@ class Solver:
 
     def resolve_strings(self, args, results):
         return self.resolve(self.body.atoms.atomize(args), list(map(lambda x: self.body.atoms.get(x), results)) )
+
+    def indent(self):
+        return '  ' * len(self.queries)
 
 class Talker:
     def __init__(self, body):

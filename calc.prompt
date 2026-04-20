@@ -30,5 +30,14 @@
          targets: {'dobj':'1'}
 - maintenance:
     - fact: {'action':'be', 'subj':'1', 'dobj':'digit'}
+    - empty:
+         definition: {'action':'not-be', 'subj':'$x', 'dobj':'$a'}
+         query: {'action':'be', 'subj':'$x', 'dobj':'$a'}
+- test:
+    - resolve:
+         args: {'action':'not-be', 'subj':' ', 'dobj':'digit'}
+         targets: {}
+
+
 
 
