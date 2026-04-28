@@ -3,6 +3,8 @@
     - fact: {'action':'+', 'dobj':'1', 'iobj':'2', 'result':'3'}
     - fact: {'action':'+', 'dobj':'1', 'iobj':'3', 'result':'4'}
     - fact: {'action':'+', 'dobj':'1', 'iobj':'4', 'result':'5'}
+    - fact: {'action':'+', 'dobj':'1', 'iobj':'10', 'result':'11'}
+    - fact: {'action':'*', 'dobj':'1', 'iobj':'10', 'result':'10'}
 - test:
     - resolve:
          args: {'action':'+', 'dobj':'1', 'iobj':'1'}
@@ -19,6 +21,9 @@
          expression: [ {'action':'+', 'dobj':'1', 'iobj':'$a', 'result':'$x'},
                        {'action':'+', 'dobj':'$a', 'iobj':'$y', 'result':'$b'},
                        {'action':'+', 'dobj':'1', 'iobj':'$b', 'result':'$z'} ]
+    - rule:
+         definition: {'action':'+','dobj':'$x', 'iobj':'$y', 'result':'$z'}
+         expression: [ {'action':'+', 'dobj':'$y', 'iobj':'$x', 'result':'$z'} ]
 - test:
     - resolve:
          args: {'action':'+', 'dobj':'2', 'iobj':'3'}
@@ -26,8 +31,9 @@
     - resolve:
          args: {'action':'+', 'dobj':'3', 'result':'4'}
          targets: {'iobj':'1'}
-         args: {'action':'+', 'iobj':'3', 'result':'4'}
-         targets: {'dobj':'1'}
+    - resolve:
+         args: {'action':'+', 'dobj':'3', 'iobj':'2'}
+         targets: {'result':'5'}
 - maintenance:
     - fact: {'action':'be', 'subj':'1', 'dobj':'digit'}
     - empty:
@@ -37,7 +43,21 @@
     - resolve:
          args: {'action':'not-be', 'subj':' ', 'dobj':'digit'}
          targets: {}
-
-
+    - resolve:
+         args: {'action':'not-be', 'subj':'1', 'dobj':'digit'}
+         targets: null
+- maintenance:
+    - transformer:
+         name: lexer
+         content:
+            - rule:
+                match: [ {'next':'$x', 'current':''}, {'action':'be', 'subj':'$x', 'dobj':'digit'}]
+                resolve: [ {'current':'$x', 'next':''} ]
+                target: [ 'current', 'next' ]
+            - rule:
+                match: [ {'current':'$x', 'next':'$y'}, {'action':'be', 'subj':'$x', 'dobj':'number'}, {'action':'be', 'subj':'$y', 'dobj':'digit'} ]
+                resolve: [ {'action':'*', 'dobj':'$x', 'iobj':'10', 'result':'$a'}, {'action':'+', 'dobj':'$a', 'iobj':'$y', 'result':'$b'},
+                           {'current':'$b', 'next':''} ]
+                target: [ 'current', 'next' ]
 
 

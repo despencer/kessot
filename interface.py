@@ -52,7 +52,8 @@ class Maintenance:
     def do(self, prompt):
         logging.info('Entering maintenance mode')
         for yfunc in prompt:
-            func, value = select( {'fact': self.addfact, 'rule':self.addrule, 'empty':self.addempty}, yfunc)
+            func, value = select( {'fact': self.addfact, 'rule':self.addrule, 'empty':self.addempty,
+                                   'transformer':self.transformer}, yfunc)
             func(value)
         logging.info('Leaving maintenance mode')
 
@@ -70,6 +71,10 @@ class Maintenance:
         logging.info(f'About to add empty rule {yrule}')
         self.body.addempty(yrule['definition'], yrule['query'])
         logging.info(f'Empty rule {yrule} added')
+
+    def transformer(self, yrule):
+        logging.info(f'About to enter transformer mode')
+        logging.info(f'Leaving transformer mode')
 
 class Interface:
     def __init__(self, body):
