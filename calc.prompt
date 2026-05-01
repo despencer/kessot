@@ -3,8 +3,13 @@
     - fact: {'action':'+', 'dobj':'1', 'iobj':'2', 'result':'3'}
     - fact: {'action':'+', 'dobj':'1', 'iobj':'3', 'result':'4'}
     - fact: {'action':'+', 'dobj':'1', 'iobj':'4', 'result':'5'}
+    - fact: {'action':'+', 'dobj':'1', 'iobj':'5', 'result':'6'}
+    - fact: {'action':'+', 'dobj':'1', 'iobj':'6', 'result':'7'}
+    - fact: {'action':'+', 'dobj':'1', 'iobj':'7', 'result':'8'}
+    - fact: {'action':'+', 'dobj':'1', 'iobj':'8', 'result':'9'}
+    - fact: {'action':'+', 'dobj':'1', 'iobj':'9', 'result':'10'}
     - fact: {'action':'+', 'dobj':'1', 'iobj':'10', 'result':'11'}
-    - fact: {'action':'*', 'dobj':'1', 'iobj':'10', 'result':'10'}
+    - fact: {'action':'*', 'dobj':'1', 'iobj':'1', 'result':'1'}
 - test:
     - resolve:
          args: {'action':'+', 'dobj':'1', 'iobj':'1'}
@@ -24,6 +29,14 @@
     - rule:
          definition: {'action':'+','dobj':'$x', 'iobj':'$y', 'result':'$z'}
          expression: [ {'action':'+', 'dobj':'$y', 'iobj':'$x', 'result':'$z'} ]
+    - rule:
+         definition: {'action':'*','dobj':'$x', 'iobj':'$y', 'result':'$z'}
+         expression: [ {'action':'+', 'dobj':'1', 'iobj':'$a', 'result':'$y'},
+                       {'action':'*', 'dobj':'$x', 'iobj':'$a', 'result':'$b'},
+                       {'action':'+', 'dobj':'$b', 'iobj':'$x', 'result':'$z'} ]
+    - rule:
+         definition: {'action':'*','dobj':'$x', 'iobj':'$y', 'result':'$z'}
+         expression: [ {'action':'*', 'dobj':'$y', 'iobj':'$x', 'result':'$z'} ]
 - test:
     - resolve:
          args: {'action':'+', 'dobj':'2', 'iobj':'3'}
@@ -34,6 +47,12 @@
     - resolve:
          args: {'action':'+', 'dobj':'3', 'iobj':'2'}
          targets: {'result':'5'}
+    - resolve:
+         args: {'action':'*', 'dobj':'1', 'iobj':'2'}
+         targets: {'result':'2'}
+    - resolve:
+         args: {'action':'*', 'dobj':'2', 'iobj':'2'}
+         targets: {'result':'4'}
 - maintenance:
     - fact: {'action':'be', 'subj':'1', 'dobj':'digit'}
     - empty:
