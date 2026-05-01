@@ -31,7 +31,7 @@ class Test:
                 print(f'Bad number of results {len(results)} for None expected')
         else:
             if len(results) != 1:
-                print(f'Bad number of results {len(results)} for 1 expected')
+                print(f'Bad number of results {len(results)} for 1 expected. Test: {ytest}')
             else:
                 results = results[0]
                 for k,v in ytest['targets'].items():

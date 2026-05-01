@@ -133,6 +133,8 @@ class RuleContainer:
         for r in self.rules:
             if r.match(args):
                 results.extend( r.apply(args, targets, body) )
+            if len(results) > 0:
+                break
         return results
 
     def save(self, context, prules):
