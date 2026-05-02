@@ -61,6 +61,8 @@ class EmptyContainer:
         for r in self.rules:
             if r.match(args, solver):
                 results.extend(r.resolve(args, solver))
+            if len(results) > 0:
+                break
         return results
 
     def save(self, context, prules):

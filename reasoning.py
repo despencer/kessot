@@ -5,6 +5,7 @@ import tuples
 import rule
 import empty
 import parsing
+import bif
 
 class BodySaver:
     def __init__(self, body):
@@ -22,6 +23,7 @@ class Body:
         self.facts = tuples.TupleContainer()
         self.rules = rule.RuleContainer()
         self.empty = empty.EmptyContainer()
+        self.bif = bif.BuiltinFunctions(self.atoms)
         self.parsing = parsing.ParsingContainer()
 
     def addfact(self, args):
@@ -98,6 +100,8 @@ class Solver:
                 results = self.body.rules.resolve(args, targets, self)
             if len(results) == 0 and len(targets) == 0:
                 results = self.body.empty.resolve(args, self)
+            if len(results) == 0:
+                results = self.body.bif.resolve(args, targets, self)
             self.queries.pop(-1)
         logging.info(f' {self.indent()}Concept resolved with with {results}')
         return results

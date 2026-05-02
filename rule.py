@@ -19,7 +19,7 @@ class RuleExpressionSolver:
         return key in self.lvars
 
     def solve(self, expression, body):
-        logging.debug(f'RES #{id(self):X}: local vars {self.lvars} expression {expression}')
+        logging.debug(f'{body.indent()}RES #{id(self):X}: local vars {self.lvars} expression {expression}')
         args = {}
         targets = []
         for k,v in expression:
@@ -31,7 +31,7 @@ class RuleExpressionSolver:
             else:
                 args[k] = v
         res = body.resolve(args, targets)
-        logging.debug(f'RES #{id(self):X}: {args} for {targets} => {res}')
+        logging.debug(f'{body.indent()}RES #{id(self):X}: {args} for {targets} => {res}')
         results = []
         for r in res:
             tarvar = dict(self.lvars)
@@ -51,17 +51,17 @@ class RuleSolver:
         for k,v in self.rule.definition:
             if v.isvariable() and k in args:
                 lvars[v] = args[k]
-        logging.debug(f'RuleSolver #{id(self):X}: started local vars set to {lvars}')
+        logging.debug(f'{self.body.indent()}RuleSolver #{id(self):X}: started local vars set to {lvars}')
         current = [ RuleExpressionSolver(lvars) ]
         for e in self.rule.expressions:
             nextctx = []
             for c in current:
                 results = c.solve(e, self.body)
-                logging.debug(f'RuleSolver #{id(self):X}: intermediate results {results}')
+                logging.debug(f'{self.body.indent()}RuleSolver #{id(self):X}: intermediate results {results}')
                 for r in results:
                     nextctx.append( RuleExpressionSolver(r) )
             current = nextctx
-        logging.debug(f'RuleSolver #{id(self):X}: finished with {current}')
+        logging.debug(f'{self.body.indent()}RuleSolver #{id(self):X}: finished with {current}')
         return current
 
 class Rule:
@@ -92,7 +92,7 @@ class Rule:
         return self.definition.match(args)
 
     def apply(self, args, targets, body):
-        logging.debug(f'Applying {args} for {targets} to {self.expressions}')
+        logging.debug(f'{body.indent()}Applying {args} for {targets} to {self.expressions}')
         solver = RuleSolver(self, body)
         results = []
         for r in solver.run(args):

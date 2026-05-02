@@ -30,6 +30,9 @@
          definition: {'action':'+','dobj':'$x', 'iobj':'$y', 'result':'$z'}
          expression: [ {'action':'+', 'dobj':'$y', 'iobj':'$x', 'result':'$z'} ]
     - rule:
+         definition: {'action':'*','dobj':'$x', 'iobj':'10', 'result':'$z'}
+         expression: [ {'action':'concat', 'dobj':'$x', 'iobj':'0', 'result':'$z'} ]
+    - rule:
          definition: {'action':'*','dobj':'$x', 'iobj':'$y', 'result':'$z'}
          expression: [ {'action':'+', 'dobj':'1', 'iobj':'$a', 'result':'$y'},
                        {'action':'*', 'dobj':'$x', 'iobj':'$a', 'result':'$b'},
@@ -53,6 +56,12 @@
     - resolve:
          args: {'action':'*', 'dobj':'2', 'iobj':'2'}
          targets: {'result':'4'}
+    - resolve:
+         args: {'action':'*', 'dobj':'1', 'iobj':'10'}
+         targets: {'result':'10'}
+    - resolve:
+         args: {'action':'*', 'dobj':'2', 'iobj':'10'}
+         targets: {'result':'20'}
 - maintenance:
     - fact: {'action':'be', 'subj':'1', 'dobj':'digit'}
     - empty:
